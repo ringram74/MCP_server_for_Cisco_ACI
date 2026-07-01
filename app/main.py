@@ -1,16 +1,17 @@
-from   mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import FastMCP
 import httpx
-import asyncio
-import os
 import json
 import logging
-from   auth_manager import apic_auth_manager 
+from auth_manager import apic_auth_manager
 
 # set up logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger("APICmcp")
 
-mcp = FastMCP("APICmcp", settings={"initialization_timeout": 10.0}) 
+mcp = FastMCP("APICmcp")
+
 
 @mcp.tool()
 async def fetch_apic_class(class_name: str) -> str:
@@ -24,12 +25,16 @@ async def fetch_apic_class(class_name: str) -> str:
     Returns:
         str: The JSON response from APIC.
     """
-    logger.info(f"Logging in to APIC")
+    logger.info("Logging in to APIC")
     await apic_auth_manager.initialize()
     client = await apic_auth_manager.get_authenticated_client()
     if not client:
-        logger.error("Error: Unable to authenticate with APIC. Please check your credentials.")
-    logger.info(f"Authenticated successfully with APIC: {apic_auth_manager.apic_base_url}")
+        logger.error(
+            "Error: Unable to authenticate with APIC. Please check your credentials."
+        )
+    logger.info(
+        f"Authenticated successfully with APIC: {apic_auth_manager.apic_base_url}"
+    )
 
     base_url = apic_auth_manager.apic_base_url
     url = f"{base_url}/api/class/{class_name}.json"
@@ -37,7 +42,7 @@ async def fetch_apic_class(class_name: str) -> str:
     try:
         response = await client.get(url, timeout=10.0)
         response.raise_for_status()
-        return json.dumps(response.json(), indent=2) 
+        return json.dumps(response.json(), indent=2)
     except httpx.HTTPStatusError as e:
         return f"Error: APIC returned status {e.response.status_code} for {e.request.url}. Response: {e.response.text}"
     except httpx.RequestError as e:
@@ -46,6 +51,7 @@ async def fetch_apic_class(class_name: str) -> str:
         return f"APIC Authentication Error: {e}"
     except Exception as e:
         return f"An unexpected error occurred: {e}"
+
 
 async def apic_rest_post(url: str, payload: dict) -> str:
     """
@@ -57,14 +63,18 @@ async def apic_rest_post(url: str, payload: dict) -> str:
         payload (dict): The JSON payload to POST to the REST API.
 
     Returns:
-        str: The JSON response from APIC.   
+        str: The JSON response from APIC.
     """
-    logger.info(f"Logging in to APIC")
+    logger.info("Logging in to APIC")
     await apic_auth_manager.initialize()
     client = await apic_auth_manager.get_authenticated_client()
     if not client:
-        logger.error("Error: Unable to authenticate with APIC. Please check your credentials.")
-    logger.info(f"Authenticated successfully with APIC: {apic_auth_manager.apic_base_url}")
+        logger.error(
+            "Error: Unable to authenticate with APIC. Please check your credentials."
+        )
+    logger.info(
+        f"Authenticated successfully with APIC: {apic_auth_manager.apic_base_url}"
+    )
 
     base_url = apic_auth_manager.apic_base_url
     url = f"{base_url}/{url}"
@@ -77,12 +87,21 @@ async def apic_rest_post(url: str, payload: dict) -> str:
         logger.error(f"Error making request to {url}: {e}")
         return None
     except httpx.HTTPStatusError as e:
-        logger.error(f"Request to {url} failed with status {e.response.status_code}: {e.response.text}")
+        logger.error(
+            f"Request to {url} failed with status {e.response.status_code}: {e.response.text}"
+        )
         return None
-    
+
 
 @mcp.tool()
-async def make_aci_backup(scp_server_ip: str, scp_username: str, scp_password: str, remote_name: str, remote_path: str, export_policy_name: str) -> str:
+async def make_aci_backup(
+    scp_server_ip: str,
+    scp_username: str,
+    scp_password: str,
+    remote_name: str,
+    remote_path: str,
+    export_policy_name: str,
+) -> str:
     """
     Creates a backup of the APIC configuration.
     Requires APIC authentication.
@@ -92,8 +111,8 @@ async def make_aci_backup(scp_server_ip: str, scp_username: str, scp_password: s
         scp_username (str): The username for the SCP server.
         scp_passwpord (str): The password for the SCP server.
         remote_path_name (str): The name of the remote path in APIC.
-        export_policy_name (str): The name of the export policy.    
-    
+        export_policy_name (str): The name of the export policy.
+
     Returns:
         str: The status of the backup operation.
     """
@@ -111,19 +130,19 @@ async def make_aci_backup(scp_server_ip: str, scp_username: str, scp_password: s
                 "userName": scp_username,
                 "userPasswd": scp_password,
                 "host": scp_server_ip,
-                "status": "created,modified"
+                "status": "created,modified",
             },
             "children": [
                 {
                     "fileRsARemoteHostToEpg": {
                         "attributes": {
                             "tDn": "uni/tn-mgmt/mgmtp-default/oob-default",
-                            "status": "created,modified"
+                            "status": "created,modified",
                         },
-                        "children": []
+                        "children": [],
                     }
                 }
-            ]
+            ],
         }
     }
     await apic_rest_post(url="/api/node/mo/uni.json", payload=remote_location_content)
@@ -135,9 +154,9 @@ async def make_aci_backup(scp_server_ip: str, scp_username: str, scp_password: s
             "attributes": {
                 "dn": "uni/exportcryptkey",
                 "strongEncryptionEnabled": "true",
-                "passphrase": "mcpServermcpServermcpServer"
+                "passphrase": "mcpServermcpServermcpServer",
             },
-            "children": []
+            "children": [],
         }
     }
     await apic_rest_post(url="/api/node/mo/uni.json", payload=aes_encryption_content)
@@ -152,26 +171,28 @@ async def make_aci_backup(scp_server_ip: str, scp_username: str, scp_password: s
                 "descr": "Export Policy for SCP",
                 "adminSt": "triggered",
                 "format": "json",
-                "status": "created,modified"
+                "status": "created,modified",
             },
-            "children": [{
-                "configRsExportScheduler": {
-                    "attributes": {
-                        "tnTrigSchedPName": "EveryEightHours",
-                        "status": "created,modified"
-                    },
-                    "children": []
-                }
-            },
-            {
-                "configRsRemotePath": {
-                    "attributes": {
-                        "tnFileRemotePathName": remote_name,
-                        "status": "created,modified"
-                    },
-                    "children": []
-                }
-            }]
+            "children": [
+                {
+                    "configRsExportScheduler": {
+                        "attributes": {
+                            "tnTrigSchedPName": "EveryEightHours",
+                            "status": "created,modified",
+                        },
+                        "children": [],
+                    }
+                },
+                {
+                    "configRsRemotePath": {
+                        "attributes": {
+                            "tnFileRemotePathName": remote_name,
+                            "status": "created,modified",
+                        },
+                        "children": [],
+                    }
+                },
+            ],
         }
     }
     await apic_rest_post(url="/api/node/mo/uni.json", payload=export_policy_content)
