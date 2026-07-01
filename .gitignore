@@ -1,0 +1,12 @@
+# Secrets and generated credential material — never commit these
+.env
+app/.env
+app/certs/
+*.key
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/

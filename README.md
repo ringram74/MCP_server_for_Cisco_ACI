@@ -9,11 +9,45 @@ If you'd like to understand how this works in detail, please check out [this blo
 ## Features
 
 - Exposes two tools for APIC interaction (see `app/main.py` for details).
-- Easily configurable via environment variables.
+- Pluggable authentication: certificate (X.509 signature auth), OS credential
+  manager (keyring), or a `.env` file.
+
+## Credentials
+
+Run the one-time setup wizard in a terminal **before** registering the server.
+A STDIO MCP server speaks the protocol over stdin/stdout, so it can't prompt for
+credentials at launch — this command is that prompt.
+
+```bash
+uv run python app/setup.py                      # interactive: choose cert / keyring / .env
+```
+
+It can also be scripted (no prompts), which is handy for containers or automated
+installs:
+
+```bash
+uv run python app/setup.py --auth-method cert    --base-url https://apic.example.com --username svc-aci
+uv run python app/setup.py --auth-method keyring --base-url https://apic.example.com --username svc-aci
+APIC_PASSWORD=... uv run python app/setup.py --auth-method dotenv --base-url ... --username svc-aci
+```
+
+The chosen method is recorded (non-secret) as `APIC_AUTH_METHOD` in `.env`, and
+the runtime honors it. You can also pin it directly in the client registration
+via the `env` block (see `.vscode/mcp.json`), e.g. `"APIC_AUTH_METHOD": "cert"`.
+
+| Method | How the secret is stored | Notes |
+|--------|--------------------------|-------|
+| `cert` (recommended) | Private key in a file (chmod 600); **no password** | Wizard generates a keypair and prints the certificate to register in APIC under *Admin > AAA > Users > \<user\> > User Certificates*. Each request is signed; nothing reusable to leak. |
+| `keyring` | OS credential manager (Keychain / Windows Credential Mgr / libsecret) | Password never touches disk or the environment. |
+| `dotenv` | Plaintext in `.env` | Least secure; explicit opt-in fallback. |
+
+Other settings (all optional, in `.env` or the client `env` block):
+`APIC_BASE_URL`, `APIC_USERNAME`, `APIC_VERIFY_SSL` (default `false`; set `true`
+and configure trusted certs in production).
 
 ## Setup
 
-1. **Specify APIC credentials** in the `.env` file.
+1. **Configure credentials** by running `uv run python app/setup.py` (see above).
 2. If you want Claude or VS Code to run the Python code directly (no container), install [UV](https://docs.astral.sh/uv/)
 3. **Register the MCP server** with Claude or VS Code.
 
